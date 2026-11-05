@@ -16,6 +16,8 @@ $ModelUrl = "https://huggingface.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF/res
 $GhBase = "https://github.com/ggml-org/llama.cpp/releases/download/$Tag"
 
 function Get-File($Url, $Dest, $Expected) {
+  $Parent = Split-Path $Dest -Parent
+  if (-not (Test-Path $Parent)) { New-Item -ItemType Directory $Parent -Force | Out-Null }
   if ((Test-Path $Dest) -and $Expected -gt 0 -and (Get-Item $Dest).Length -eq $Expected) {
     Write-Host "取得済みのため省略: $Dest"; return
   }
@@ -29,13 +31,16 @@ function Expand-Into($Zip, $Dir) {
   Expand-Archive -Path $Zip -DestinationPath $Dir -Force
 }
 
+foreach ($d in @('llama', 'llama-cpu', 'models', 'python')) {
+  if (-not (Test-Path (Join-Path $Root $d))) { New-Item -ItemType Directory (Join-Path $Root $d) -Force | Out-Null }
+}
 $Tmp = Join-Path $Root '_downloads'
 if (-not (Test-Path $Tmp)) { New-Item -ItemType Directory $Tmp | Out-Null }
 
 Write-Host '--- 1/4 llama.cpp (GPU版 + CUDAランタイム) ---'
-Get-File "$GhBase/llama-$Tag-bin-win-cuda-12.4-x64.zip" (Join-Path $Tmp 'llama-cuda.zip') 0
+Get-File "$GhBase/llama-$Tag-bin-win-cuda-12.4-x64.zip" (Join-Path $Tmp 'llama-cuda.zip') 286851724
 Expand-Into (Join-Path $Tmp 'llama-cuda.zip') (Join-Path $Root 'llama')
-Get-File "$GhBase/cudart-llama-bin-win-cuda-12.4-x64.zip" (Join-Path $Tmp 'cudart.zip') 0
+Get-File "$GhBase/cudart-llama-bin-win-cuda-12.4-x64.zip" (Join-Path $Tmp 'cudart.zip') 391443627
 Expand-Into (Join-Path $Tmp 'cudart.zip') (Join-Path $Root 'llama')
 # DLLがサブフォルダに入った場合は llama 直下へ集める
 $LlamaDir = Join-Path $Root 'llama'
@@ -43,14 +48,14 @@ Get-ChildItem $LlamaDir -Recurse -Filter '*.dll' | Where-Object { $_.DirectoryNa
   Copy-Item -Destination $LlamaDir -Force
 
 Write-Host '--- 2/4 llama.cpp (CPU版・保険) ---'
-Get-File "$GhBase/llama-$Tag-bin-win-cpu-x64.zip" (Join-Path $Tmp 'llama-cpu.zip') 0
+Get-File "$GhBase/llama-$Tag-bin-win-cpu-x64.zip" (Join-Path $Tmp 'llama-cpu.zip') 24609224
 Expand-Into (Join-Path $Tmp 'llama-cpu.zip') (Join-Path $Root 'llama-cpu')
 
 Write-Host '--- 3/4 モデル (約18.6GB、時間がかかります) ---'
 Get-File $ModelUrl (Join-Path $Root "models\$ModelFile") $ModelSize
 
 Write-Host '--- 4/4 Python 埋め込み版 + ライブラリ ---'
-Get-File 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' (Join-Path $Tmp 'python-embed.zip') 0
+Get-File 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' (Join-Path $Tmp 'python-embed.zip') 11133606
 Expand-Into (Join-Path $Tmp 'python-embed.zip') (Join-Path $Root 'python')
 $Pth = Join-Path $Root 'python\python312._pth'
 (Get-Content $Pth) -replace '^#import site', 'import site' | Set-Content $Pth -Encoding ASCII
