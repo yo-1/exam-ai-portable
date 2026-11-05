@@ -1,0 +1,11 @@
+# セットアップで取得する中身はコミットしない (置き場だけ保持)
+_downloads/
+llama/*
+!llama/.gitkeep
+llama-cpu/*
+!llama-cpu/.gitkeep
+models/*
+!models/.gitkeep
+python/*
+!python/.gitkeep
+__pycache__/
